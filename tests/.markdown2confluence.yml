@@ -1,0 +1,18 @@
+default:
+  debug: false
+  endpoint: https://stryker-agile.atlassian.net/wiki
+  exclude: []
+  hardwraps: false
+  modified-since: 0
+  parent: Null
+  #password:
+  space: SAN
+  title: Null
+  use-document-title: true
+  # username:
+  sources:
+    - README.md
+# targets:
+#   api-docs:
+#       sources:
+#         - API_DOCS.md

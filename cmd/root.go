@@ -16,6 +16,8 @@ func init() {
 	log.SetFlags(0)
 
 	rootCmd.Flags().SetInterspersed(false)
+	rootCmd.PersistentFlags().StringSliceVarP(&m.Targets, "target", "", []string{}, "targets to be deployed")
+	rootCmd.PersistentFlags().StringVarP(&m.ConfigFile, "config", "c", lib.DefaultConfigFile, "location to the config file to be used")
 	rootCmd.PersistentFlags().StringVarP(&m.Space, "space", "s", "", "Space in which page should be created")
 	rootCmd.PersistentFlags().StringVarP(&m.Username, "username", "u", "", "Confluence username. (Alternatively set CONFLUENCE_USERNAME environment variable)")
 	rootCmd.PersistentFlags().StringVarP(&m.Password, "password", "p", "", "Confluence password. (Alternatively set CONFLUENCE_PASSWORD environment variable)")
@@ -38,6 +40,7 @@ var rootCmd = &cobra.Command{
 	Run: func(rootCmd *cobra.Command, args []string) {
 		m.SourceMarkdown = args
 		// Validate the arguments
+
 		err := m.Validate()
 		if err != nil {
 			log.Fatal(err)

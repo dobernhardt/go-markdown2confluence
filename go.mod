@@ -9,4 +9,5 @@ require (
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/spf13/cobra v0.0.4
 	github.com/yuin/goldmark v1.1.25
+	gopkg.in/yaml.v2 v2.2.2
 )

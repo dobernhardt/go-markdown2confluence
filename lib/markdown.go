@@ -17,6 +17,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"gopkg.in/yaml.v2"
 
 	e "github.com/justmiles/go-markdown2confluence/lib/extension"
 )
@@ -25,11 +26,34 @@ const (
 	// DefaultEndpoint provides an example endpoint for users
 	DefaultEndpoint = "https://mydomain.atlassian.net/wiki"
 
+	// DefaultConfigFile to be used if available
+	DefaultConfigFile = ".markdown2confluence.yml"
+
 	// Parallelism determines how many files to convert and upload at a time
 	Parallelism = 5
 )
 
 // Markdown2Confluence stores the settings for each run
+type config struct {
+	Default appParams            `yaml:"default"`
+	Targets map[string]appParams `yaml:"targets,omitempty"`
+}
+
+type appParams struct {
+	Debug            bool     `yaml:"debug,omitempty"`
+	Endpoint         string   `yaml:"endpoint,omitempty"`
+	Exclude          []string `yaml:"exclude,omitempty"`
+	Hardwraps        bool     `yaml:"hardwraps,omitempty"`
+	ModifiedSince    int      `yaml:"modified-since,omitempty"`
+	Parent           string   `yaml:"parent,omitempty"`
+	Password         string   `yaml:"password,omitempty"`
+	Space            string   `yaml:"space,omitempty"`
+	Title            string   `yaml:"title,omitempty"`
+	UseDocumentTitle bool     `yaml:"use-document-title,omitempty"`
+	Username         string   `yaml:"username,omitempty"`
+	Sources          []string `yaml:"sources,omitempty"`
+}
+
 type Markdown2Confluence struct {
 	Space               string
 	Title               string
@@ -45,7 +69,10 @@ type Markdown2Confluence struct {
 	Parent              string
 	SourceMarkdown      []string
 	ExcludeFilePatterns []string
+	ConfigFile          string
+	Config              config
 	client              *confluence.Client
+	Targets             []string
 }
 
 // CreateClient returns a new markdown clietn
@@ -79,24 +106,73 @@ func (m *Markdown2Confluence) SourceEnvironmentVariables() {
 	}
 }
 
+func (c *config) readConfig(p string) *config {
+	yamlFile, err := ioutil.ReadFile(p)
+	if err != nil {
+		log.Printf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, c)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return c
+}
+
 // Validate required configs are set
-func (m Markdown2Confluence) Validate() error {
-	if m.Space == "" {
+func (m *Markdown2Confluence) Validate() error {
+	m.Config.readConfig(m.ConfigFile)
+	// Overwrite default config
+	if m.Debug {
+		m.Config.Default.Debug = m.Debug
+	}
+	if m.Space != "" {
+		m.Config.Default.Space = m.Space
+	}
+	if m.Parent != "" {
+		m.Config.Default.Space = m.Parent
+	}
+	if m.Username != "" {
+		m.Config.Default.Username = m.Username
+	}
+	if m.Password != "" {
+		m.Config.Default.Password = m.Password
+	}
+	if m.Endpoint != "" {
+		m.Config.Default.Endpoint = m.Endpoint
+	}
+	if m.UseDocumentTitle {
+		m.Config.Default.UseDocumentTitle = m.UseDocumentTitle
+	}
+	if m.WithHardWraps {
+		m.Config.Default.Hardwraps = m.WithHardWraps
+	}
+	if m.Since != 0 {
+		m.Config.Default.ModifiedSince = m.Since
+	}
+	if len(m.SourceMarkdown) != 0 {
+		m.Config.Default.Sources = m.SourceMarkdown
+	}
+	if len(m.ExcludeFilePatterns) != 0 {
+		m.Config.Default.Exclude = m.ExcludeFilePatterns
+	}
+
+	if m.Space == "" && m.Config.Default.Space == "" {
 		return fmt.Errorf("--space is not defined")
 	}
-	if m.Username == "" {
+	if m.Username == "" && m.Config.Default.Username == "" {
 		return fmt.Errorf("--username is not defined")
 	}
-	if m.Password == "" {
+	if m.Password == "" && m.Config.Default.Password == "" {
 		return fmt.Errorf("--password is not defined")
 	}
-	if m.Endpoint == "" {
+	if m.Endpoint == "" && m.Config.Default.Endpoint == "" {
 		return fmt.Errorf("--endpoint is not defined")
 	}
-	if m.Endpoint == DefaultEndpoint {
+	if m.Endpoint == DefaultEndpoint && m.Config.Default.Endpoint == DefaultEndpoint {
 		return fmt.Errorf("--endpoint is not defined")
 	}
-	if len(m.SourceMarkdown) == 0 {
+	if len(m.SourceMarkdown) == 0 && len(m.Config.Default.Sources) == 0 {
 		return fmt.Errorf("please pass a markdown file or directory of markdown files")
 	}
 	if len(m.SourceMarkdown) > 1 && m.Title != "" {
